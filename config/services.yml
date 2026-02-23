@@ -8,3 +8,4 @@ services:
     factory: ['@doctrine.orm.default_entity_manager', getRepository]
     arguments:
       - Extalion\Sentry\Entity\ExtsentryConfiguration
+    tags: ['controller.service_arguments']
