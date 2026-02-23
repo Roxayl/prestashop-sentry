@@ -19,16 +19,14 @@ class Installer
         $customDefinesFileContent = self::getFileContent($customDefinesFile);
         $sentryEntry = self::getSentryEntry();
 
-        if (self::isSentryInstalled($customDefinesFileContent, $sentryEntry)) {
-            return;
+        if (self::hasSentryBlock($customDefinesFileContent)) {
+            $customDefinesFileContent = self::replaceSentryBlock(
+                $customDefinesFileContent,
+                $sentryEntry
+            );
+        } else {
+            $customDefinesFileContent .= "\n" . $sentryEntry;
         }
-
-        $customDefinesFileContent = <<<TXT
-            $customDefinesFileContent
-
-            $sentryEntry
-            TXT
-        ;
 
         self::putFileContent($customDefinesFile, $customDefinesFileContent);
     }
@@ -42,16 +40,14 @@ class Installer
         }
 
         $customDefinesFileContent = self::getFileContent($customDefinesFile);
-        $sentryEntry = self::getSentryEntry();
 
-        if (!self::isSentryInstalled($customDefinesFileContent, $sentryEntry)) {
+        if (!self::hasSentryBlock($customDefinesFileContent)) {
             return;
         }
 
-        $customDefinesFileContent = \str_replace(
-            $sentryEntry,
-            '',
-            $customDefinesFileContent
+        $customDefinesFileContent = self::replaceSentryBlock(
+            $customDefinesFileContent,
+            ''
         );
 
         self::putFileContent($customDefinesFile, $customDefinesFileContent);
@@ -97,20 +93,40 @@ class Installer
 
         return <<<TXT
         ###> extsentry ###
-        require_once "{$rootDir}/config/defines.inc.php";
-        require_once _PS_CONFIG_DIR_ . 'autoload.php';
-        require_once "{$rootDir}/modules/extsentry/vendor/autoload.php";
+        if (file_exists("{$rootDir}/modules/extsentry/vendor/autoload.php")) {
+            require_once "{$rootDir}/config/defines.inc.php";
+            require_once _PS_CONFIG_DIR_ . 'autoload.php';
+            require_once "{$rootDir}/modules/extsentry/vendor/autoload.php";
 
-        \Extalion\Sentry\Helper\SentryRunner::run();
+            \Extalion\Sentry\Helper\SentryRunner::run();
+        }
         ###< extsentry ###
         TXT;
     }
 
-    private static function isSentryInstalled(
+    private static function getSentryBlockPattern(): string
+    {
+        return '/\s*###> extsentry ###.*?###< extsentry ###/s';
+    }
+
+    private static function hasSentryBlock(string $fileContent): bool
+    {
+        return (bool) \preg_match(self::getSentryBlockPattern(), $fileContent);
+    }
+
+    private static function replaceSentryBlock(
         string $fileContent,
-        string $sentryEntry
-    ): bool {
-        return \strpos($fileContent, \trim($sentryEntry)) !== false;
+        string $replacement
+    ): string {
+        if ($replacement !== '') {
+            $replacement = "\n" . $replacement;
+        }
+
+        return \preg_replace(
+            self::getSentryBlockPattern(),
+            $replacement,
+            $fileContent
+        );
     }
 
     private static function putFileContent(string $file, string $content): void
