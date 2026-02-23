@@ -1,0 +1,3 @@
+<Files "sentry.json">
+    Require all denied
+</Files>
