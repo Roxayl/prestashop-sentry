@@ -65,7 +65,7 @@ class Installer
             throw new InstallerException("Parent dir \"{$parent}\" is not writable!");
         }
 
-        if (!\touch($file)) {
+        if (\file_put_contents($file, "<?php\n") === false) {
             throw new InstallerException("Could not create file \"{$file}\"!");
         }
     }

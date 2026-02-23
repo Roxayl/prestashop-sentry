@@ -7,6 +7,7 @@ namespace Extalion\Sentry\Controller\Admin;
 use Extalion\Sentry\Consts\SentryConfigFile;
 use Extalion\Sentry\Entity\ExtsentryConfiguration as ConfigurationEntity;
 use Extalion\Sentry\Form\Type\Configuration as ConfigurationType;
+use Extalion\Sentry\Helper\Installer;
 use Extalion\Sentry\ToolbarButton\ToolbarButton;
 use Extalion\Sentry\ToolbarButton\ToolbarButtonCollection;
 use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
@@ -52,6 +53,7 @@ class ConfigurationController extends FrameworkBundleAdminController
 
             $em->flush();
             $this->saveConfigurationsToFile($newConfigurations);
+            Installer::enableSentry();
 
             $this->addFlash('success', 'Configuration saved');
         }
