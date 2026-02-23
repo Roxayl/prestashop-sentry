@@ -56,8 +56,6 @@ class ConfigurationController extends FrameworkBundleAdminController
             $this->addFlash('success', 'Configuration saved');
         }
 
-        $language = $this->getContext()->language;
-
         return $this->render(
             '@Modules/extsentry/views/templates/admin/configuration.html.twig',
             [
