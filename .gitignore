@@ -6,6 +6,7 @@ vendor/
 .php-cs-fixer.cache
 .phpcs-cache
 config.xml
+config_*.xml
 phpcs.xml
 phpmd.xml
 
