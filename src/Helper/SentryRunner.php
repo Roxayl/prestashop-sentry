@@ -31,6 +31,11 @@ class SentryRunner
         $config['sample_rate'] = (float) ($config['sample_rate'] ?? 1);
         $config['environment'] = $config['environment'] ?? null;
 
+        // Disable HTTP compression: it loads php-http/message Encoding streams
+        // whose typed signatures are incompatible with the psr/http-message
+        // 1.0.1 bundled by PrestaShop 8.x, causing a fatal error on send.
+        $config['enable_compression'] = false;
+
         return $config;
     }
 
