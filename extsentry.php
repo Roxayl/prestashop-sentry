@@ -69,6 +69,8 @@ class ExtSentry extends Module
 
     public function enable($forceAll = false): bool
     {
+        $this->uninstallOverrides();
+
         try {
             if (parent::enable($forceAll) && $this->installTab()) {
                 Installer::enableSentry();
