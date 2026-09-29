@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Extalion\Sentry\Form\Type;
 
-use Extalion\Sentry\Consts\ErrorTypesRegex;
+use Extalion\Sentry\Helper\ErrorTypes;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Extension\Core\Type as CoreType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 class Configuration extends AbstractType
 {
@@ -40,7 +41,13 @@ class Configuration extends AbstractType
                         'placeholder' => 'E_ALL',
                     ],
                     'constraints' => [
-                        new Assert\Regex('/' . ErrorTypesRegex::REGEX . '/'),
+                        new Assert\Callback(
+                            function ($value, ExecutionContextInterface $context): void {
+                                if ($value !== null && $value !== '' && !ErrorTypes::isValid((string) $value)) {
+                                    $context->buildViolation('This value is not valid.')->addViolation();
+                                }
+                            }
+                        ),
                     ],
                     'label' => 'Error types',
                     'required' => false,

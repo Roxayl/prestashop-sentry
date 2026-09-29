@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Extalion\Sentry\Helper;
 
-use Extalion\Sentry\Consts\ErrorTypesRegex;
 use Extalion\Sentry\Consts\SentryConfigFile;
 
 class SentryRunner
@@ -26,7 +25,8 @@ class SentryRunner
         }
 
         $config = (array) \json_decode($configContent, true);
-        $errorTypes = self::validErrorTypes($config['error_types'] ?? '');
+        $errorTypes = (string) ($config['error_types'] ?? '');
+        $errorTypes = ErrorTypes::isValid($errorTypes) ? $errorTypes : '';
         $config['error_types'] = eval("return {$errorTypes};");
         $config['sample_rate'] = (float) ($config['sample_rate'] ?? 1);
         $config['environment'] = $config['environment'] ?? null;
@@ -37,21 +37,5 @@ class SentryRunner
         $config['enable_compression'] = false;
 
         return $config;
-    }
-
-    private static function validErrorTypes(string $errorTypes): string
-    {
-        if (!$errorTypes) {
-            return '';
-        }
-
-        $output = [];
-        \preg_match('/' . ErrorTypesRegex::REGEX . '/', $errorTypes, $output);
-
-        if ($output && $output[0] === $errorTypes) {
-            return $errorTypes;
-        }
-
-        return '';
     }
 }
