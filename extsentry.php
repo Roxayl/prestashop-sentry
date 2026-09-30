@@ -99,6 +99,42 @@ class ExtSentry extends Module
         return false;
     }
 
+    public function installOverrides()
+    {
+        // Module::enable() ignores the returned value and only stops on an exception.
+        if (!$this->addOverride('PrestaShopException')) {
+            throw new InstallerException('The PrestaShopException override could not be installed.');
+        }
+
+        foreach (['DbPDO', 'Hook'] as $class) {
+            try {
+                $installed = $this->addOverride($class);
+                $error = $installed ? '' : 'addOverride() returned false';
+            } catch (\Throwable $ex) {
+                $installed = false;
+                $error = $ex->getMessage();
+            }
+
+            if (!$installed) {
+                PrestaShopLogger::addLog(
+                    "[extsentry] The {$class} override could not be installed, tracing will not measure it: {$error}",
+                    PrestaShopLogger::LOG_SEVERITY_LEVEL_WARNING
+                );
+            }
+        }
+
+        // PrestaShop only rebuilds the class index of the current environment.
+        foreach (['dev', 'prod'] as $environment) {
+            $classIndex = _PS_ROOT_DIR_ . "/var/cache/{$environment}/class_index.php";
+
+            if (\file_exists($classIndex)) {
+                @\unlink($classIndex);
+            }
+        }
+
+        return true;
+    }
+
     private function installTab(): bool
     {
         $tabRepository = $this->get('prestashop.core.admin.tab.repository');

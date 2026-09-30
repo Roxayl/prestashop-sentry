@@ -9,3 +9,7 @@ services:
     arguments:
       - Extalion\Sentry\Entity\ExtsentryConfiguration
     tags: ['controller.service_arguments']
+
+  extalion.sentry.tracing.transaction_name_subscriber:
+    class: Extalion\Sentry\Tracing\TransactionNameSubscriber
+    tags: ['kernel.event_subscriber']
