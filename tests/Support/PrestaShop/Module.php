@@ -8,6 +8,8 @@ class Module
     /** @var array<string, bool|\Throwable> */
     public static array $overrideOutcomes = [];
 
+    public static string $localPath = '';
+
     /** @var string[] */
     public array $attemptedOverrides = [];
 
@@ -25,6 +27,11 @@ class Module
 
     public function __construct()
     {
+    }
+
+    public function getLocalPath()
+    {
+        return self::$localPath;
     }
 
     public function trans($id, array $parameters = [], $domain = null, $locale = null)

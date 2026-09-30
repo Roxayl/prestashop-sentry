@@ -87,9 +87,9 @@ final class SentryPipelineTest extends SentryTestCase
     }
 
     /**
-     * @param array<string, mixed> $sentryJson the settings saved in sentry.json
+     * @param array<string, mixed> $settings the settings saved by the configuration page
      */
-    private function bindProductionClient(array $sentryJson = [], string $referer = 'Referer'): void
+    private function bindProductionClient(array $settings = [], string $referer = 'Referer'): void
     {
         $request = (new ServerRequest(
             'POST',
@@ -109,7 +109,7 @@ final class SentryPipelineTest extends SentryTestCase
             ->withCookieParams(['PrestaShop-abc' => 'secret'])
             ->withParsedBody(['email' => 'jane@example.com', 'password' => 'secret']);
 
-        $config = SentryRunner::buildConfig($sentryJson + [
+        $config = SentryRunner::buildConfig($settings + [
             'dsn' => 'https://public@example.ingest.sentry.io/1',
             'traces_sample_rate' => '1',
         ]);

@@ -33,8 +33,8 @@ final class SentryRunnerTest extends TestCase
     {
         $defaults = new Options();
 
-        foreach ([[], ['traces_sample_rate' => ''], ['traces_sample_rate' => '0']] as $sentryJson) {
-            $options = new Options(SentryRunner::buildConfig($sentryJson));
+        foreach ([[], ['traces_sample_rate' => ''], ['traces_sample_rate' => '0']] as $settings) {
+            $options = new Options(SentryRunner::buildConfig($settings));
 
             self::assertSame($defaults->getHttpConnectTimeout(), $options->getHttpConnectTimeout());
             self::assertSame($defaults->getHttpTimeout(), $options->getHttpTimeout());

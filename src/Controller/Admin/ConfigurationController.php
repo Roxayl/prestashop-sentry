@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Extalion\Sentry\Controller\Admin;
 
-use Extalion\Sentry\Consts\SentryConfigFile;
 use Extalion\Sentry\Entity\ExtsentryConfiguration as ConfigurationEntity;
 use Extalion\Sentry\Form\Type\Configuration as ConfigurationType;
 use Extalion\Sentry\Helper\Installer;
+use Extalion\Sentry\Helper\SettingsFile;
 use Extalion\Sentry\ToolbarButton\ToolbarButton;
 use Extalion\Sentry\ToolbarButton\ToolbarButtonCollection;
 use PrestaShopBundle\Controller\Admin\FrameworkBundleAdminController;
@@ -22,7 +22,7 @@ class ConfigurationController extends FrameworkBundleAdminController
     {
         parent::__construct();
 
-        $this->configFile = SentryConfigFile::getPath();
+        $this->configFile = SettingsFile::getPath();
     }
 
     public function indexAction(Request $request): Response
@@ -103,24 +103,13 @@ class ConfigurationController extends FrameworkBundleAdminController
 
     private function saveConfigurationsToFile(array $configurations): void
     {
-        $configContent = '';
-
-        if (\file_exists($this->configFile)) {
-            $configContent = \file_get_contents($this->configFile);
-        }
-
-        $configData = (array) \json_decode($configContent, true);
         $formData = [];
 
         foreach ($configurations as $configuration) {
             $formData[$configuration->getName()] = $configuration->getValue();
         }
 
-        $configData = \array_merge($configData, $formData);
-        $configContent = \json_encode($configData);
-
-        \file_put_contents($this->configFile, $configContent);
-        \chmod($this->configFile, 0600);
+        SettingsFile::write(\array_merge(SettingsFile::read($this->configFile), $formData), $this->configFile);
     }
 
     private function getToolbarButtons(): ToolbarButtonCollection

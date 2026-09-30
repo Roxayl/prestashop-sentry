@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Extalion\Sentry\Helper;
 
-use Extalion\Sentry\Consts\SentryConfigFile;
 use Extalion\Sentry\Tracing\RequestTransaction;
 use Sentry\Event;
 use Sentry\Integration\ModulesIntegration;
@@ -13,7 +12,7 @@ class SentryRunner
 {
     public static function run(): void
     {
-        $config = self::buildConfig(self::readConfigFile());
+        $config = self::buildConfig(SettingsFile::read());
 
         \Sentry\init($config);
 
@@ -81,16 +80,5 @@ class SentryRunner
         };
 
         return $config;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function readConfigFile(): array
-    {
-        $configFile = SentryConfigFile::getPath();
-        $configContent = \file_exists($configFile) ? (string) \file_get_contents($configFile) : '';
-
-        return (array) \json_decode($configContent, true);
     }
 }
