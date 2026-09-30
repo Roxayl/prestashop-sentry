@@ -17,6 +17,12 @@ phpmd:
 php-cs-fixer:
 	php vendor/bin/php-cs-fixer fix
 
+test-deps:
+	composer install --working-dir=tests --prefer-dist --no-progress --no-interaction
+
+test: test-deps
+	php tests/vendor/bin/phpunit
+
 composer-dev:
 	composer install --prefer-dist --no-progress --no-interaction
 	composer dump-autoload
@@ -50,6 +56,9 @@ build: composer-prod
 		--exclude=$(module_name).zip \
 		--exclude=Makefile \
 		--exclude=sentry.json \
+		--exclude=tests \
+		--exclude=phpunit.xml* \
+		--exclude=.phpunit.result.cache \
 		$(module_dir)/ $(build_dir)
 
 archive:

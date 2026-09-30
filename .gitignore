@@ -13,3 +13,6 @@ phpmd.xml
 *index.php
 
 sentry.json
+
+.phpunit.result.cache
+/tests/vendor/
