@@ -7,7 +7,7 @@ PrestaShop module that reports PHP errors and exceptions to [Sentry](https://sen
 - PrestaShop 1.7.8 or later
 - PHP 7.4 or later
 - Composer, `rsync` and `zip` on the machine that builds the archive
-- Write access for the web server user to `config/`, where the module edits `defines_custom.inc.php`, and to `override/`
+- Write access for the web server user to `config/`, where the module edits `defines_custom.inc.php` and writes its settings, and to `override/`
 
 ## Build the archive
 
@@ -21,6 +21,19 @@ make release
 
 `make release` installs the production dependencies, copies the module into a clean `extsentry/` directory, adds the `index.php` files PrestaShop expects, and produces `extsentry.zip`.
 
+## Tests
+
+The tests run without PrestaShop, on PHP 7.4 or later with the `intl` extension:
+
+```bash
+composer install --no-dev
+make test
+```
+
+`make test` installs the test dependencies in `tests/vendor/` and runs PHPUnit. `tests/composer.json` is a separate Composer project: besides PHPUnit, it provides the packages that PrestaShop supplies to the module at runtime, such as the PSR interfaces, Guzzle promises and Symfony 4.4 components. The module's `composer.json` replaces them, so they cannot be installed as its development dependencies.
+
+These Symfony 4.4 versions are affected by security advisories, and recent Composer versions refuse to install them. `tests/composer.json` accepts them because they only serve the tests, and `make release` leaves `tests/` out of the archive.
+
 ## Install
 
 From the back office, go to **Modules > Module Manager**, click **Upload a module** and select `extsentry.zip`.
@@ -31,7 +44,7 @@ From the command line, copy the built `extsentry/` directory into `modules/`, th
 php bin/console prestashop:module install extsentry
 ```
 
-Installation creates the `<prefix>extsentry_configuration` table, installs the `PrestaShopException` override and adds the Sentry bootstrap to `config/defines_custom.inc.php`. Nothing is sent to Sentry until a DSN is configured.
+Installation creates the `<prefix>extsentry_configuration` table, installs the `PrestaShopException`, `DbPDO` and `Hook` overrides and adds the Sentry bootstrap to `config/defines_custom.inc.php`. Nothing is sent to Sentry until a DSN is configured.
 
 ## Configure
 
@@ -41,31 +54,51 @@ In **Modules > Module Manager**, click **Configure** on the Sentry module.
 |---|---|
 | DSN | Required. The client key of your Sentry project (**Settings > Client Keys**). |
 | Error types | PHP error types to report, written with `E_*` constants and the `\|`, `&`, `^` and `~` operators, for example `E_ERROR \| E_PARSE \| E_CORE_ERROR \| E_COMPILE_ERROR \| E_USER_ERROR \| E_RECOVERABLE_ERROR \| E_WARNING`. When empty, the SDK follows `error_reporting()`. |
-| Sample rate | Share of error events sent, from `0` to `1`. Keep `1` to report every error. |
+| Sample rate | Share of error events sent, from `0` to `1`. Empty sends every error. |
+| Traces sample rate | Share of HTTP requests traced for performance monitoring, from `0` to `1`. Empty or `0` disables tracing. See [Performance monitoring](#performance-monitoring). |
 | Server name | Name attached to every event. |
 | Environment | `production` or `development`. |
 
-Saving stores the settings in the database and in `modules/extsentry/sentry.json` (mode `0600`), which is read on every request. On Apache, the bundled `.htaccess` denies web access to this file. On nginx, add an equivalent rule:
+Saving stores the settings in the database and in `config/extsentry.yml` (mode `0600`), which is read on every request. On Apache, the `.htaccess` that PrestaShop ships in `config/` denies web access to this directory. On nginx, make sure your server configuration denies it too:
 
 ```nginx
-location ~ /modules/extsentry/sentry\.json$ {
+location ^~ /config/ {
     deny all;
 }
 ```
 
 ## How it works
 
-- The module adds a block between `###> extsentry ###` markers to `config/defines_custom.inc.php`, which PrestaShop includes at the very start of every request: front office, back office and command line. The block loads the PrestaShop autoloader, then the module's, and initializes the SDK, which registers its error, exception and fatal error handlers.
+- The module adds a block between `###> extsentry ###` markers to `config/defines_custom.inc.php`, which PrestaShop includes at the very start of every request: front office, back office and command line. The block loads the PrestaShop autoloader, then the module's, initializes the SDK, which registers its error, exception and fatal error handlers, and starts the request transaction when tracing is enabled.
 - PrestaShop catches some exceptions itself and renders its error page (`error500.html` in production) through `PrestaShopException::displayMessage()`, which exits before any global handler runs. The module overrides this method to report the exception first.
 - HTTP compression is disabled in the SDK: the compression streams of `php-http/message` are incompatible with the `psr/http-message` 1.0 interfaces bundled with PrestaShop 8.
+- The SDK does not attach the list of Composer packages to events (`ModulesIntegration`): it would list the module's packages, not the shop's.
+
+## Performance monitoring
+
+When **Traces sample rate** is set, the module sends a Sentry transaction for that share of HTTP requests. Command-line runs are never traced.
+
+- The transaction starts with the request and is sent at the end of the script. It is named after the Symfony route on Symfony back-office pages, after the controller class elsewhere (`GET ProductController`, `POST CartController (ajax)`), and after the script when no controller ran.
+- A span is created for every hook call and SQL query that lasts 1 ms or more, nested as they ran. Faster ones only count in the transaction data: `db.query_count`, `db.duration_ms`, `db.error_count`, `hooks.count`, and `hooks.top` and `db.top`, the 15 hooks and query shapes with the highest total time. A PrestaShop page often runs thousands of sub-millisecond queries: the totals show them where individual spans would not.
+- SQL is sent without its values: quoted strings and numbers are replaced with `?`.
+- Transactions are sent without the request body and query string, which may hold customer data or tokens.
+- Incoming `sentry-trace` and `baggage` headers are ignored, so that a client cannot force its requests to be traced.
+
+Hooks and SQL queries are measured through overrides of `Hook::coreCallHook()` and `DbPDO::_query()`. When another module already overrides one of them, the module still installs, without that measurement, and writes a warning in **Advanced Parameters > Logs**.
+
+Not measured: hooks rendered as widgets (`renderWidget()`), SQL queries that do not go through `Db` (Doctrine in Symfony pages), and outgoing HTTP calls.
+
+### Performance impact
+
+On a non-traced request, the overrides add about 30 ns per SQL query. A traced request adds a few milliseconds of CPU time, plus the time Sentry takes to receive the transaction, since the SDK sends it synchronously: the visitor waits for that round trip. Start with a low rate, such as `0.02`.
 
 ## Upgrade
 
-Upload the new archive from **Module Manager**: PrestaShop runs the upgrade scripts. From 0.1.0, the 0.2.0 script installs the `PrestaShopException` override when the module is enabled on at least one shop. If it fails, a warning is written in **Advanced Parameters > Logs**; disable then enable the module to install the override.
+Upload the new archive from **Module Manager**: PrestaShop runs the upgrade scripts. From 0.1.0, the 0.2.0 script installs the `PrestaShopException` override when the module is enabled on at least one shop. If it fails, a warning is written in **Advanced Parameters > Logs**; disable then enable the module to install the override. The 0.3.0 script moves the settings from `modules/extsentry/sentry.json` to `config/extsentry.yml` and installs the `DbPDO` and `Hook` overrides used by tracing. Tracing stays disabled until **Traces sample rate** is set.
 
 ## Disable and uninstall
 
-Disabling the module removes the block from `config/defines_custom.inc.php` and the override, so nothing is reported anymore. Uninstalling does the same and keeps the configuration table. After a reinstall, save the configuration page once to write `sentry.json` again.
+Disabling the module removes the block from `config/defines_custom.inc.php` and the overrides, so nothing is reported anymore. Uninstalling does the same and keeps the configuration table and `config/extsentry.yml`.
 
 ## Limitations
 
