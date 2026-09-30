@@ -65,6 +65,22 @@ class Configuration extends AbstractType
                     ],
                     'label' => 'Sample rate',
                     'required' => false,
+                    'scale' => 6,
+                ]
+            )
+            ->add(
+                'traces_sample_rate',
+                CoreType\NumberType::class,
+                [
+                    'attr' => [
+                        'placeholder' => '0.02',
+                    ],
+                    'constraints' => [
+                        new Assert\Range(['max' => 1.0, 'min' => 0]),
+                    ],
+                    'label' => 'Traces sample rate',
+                    'required' => false,
+                    'scale' => 6,
                 ]
             )
             ->add(
@@ -89,12 +105,14 @@ class Configuration extends AbstractType
             )
         ;
 
-        $builder
-            ->get('sample_rate')
-            ->addModelTransformer(new CallbackTransformer(
-                fn ($value) => (float) $value,
-                fn ($value) => $value
-            ))
-        ;
+        foreach (['sample_rate', 'traces_sample_rate'] as $rate) {
+            $builder
+                ->get($rate)
+                ->addModelTransformer(new CallbackTransformer(
+                    fn ($value) => $value === null || $value === '' ? null : (float) $value,
+                    fn ($value) => $value
+                ))
+            ;
+        }
     }
 }

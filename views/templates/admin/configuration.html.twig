@@ -61,6 +61,19 @@
           </div>
 
           <div class="form-group row">
+            {{ form_label(form.traces_sample_rate) }}
+
+            <div class="col-sm-4">
+              {{ form_errors(form.traces_sample_rate) }}
+              {{ form_widget(form.traces_sample_rate) }}
+
+              <small id="configuration_traces_sample_rate_help" class="form-text text-muted">
+                {{ 'Share of requests traced for performance monitoring, in the range of %min% to %max%. Leave empty to disable. Each traced request waits for Sentry to receive its data: keep it low. See %traces_sample_rate%.'|trans({'%min%': '<strong>0.0</strong>', '%max%': '<strong>1.0</strong>', '%traces_sample_rate%': '<a href="https://docs.sentry.io/platforms/php/configuration/options/#traces-sample-rate" target="_blank">traces_sample_rate</a>'}, 'Modules.Extsentry.Admin')|raw }}
+              </small>
+            </div>
+          </div>
+
+          <div class="form-group row">
             {{ form_label(form.server_name) }}
 
             <div class="col-sm-4">
