@@ -19,7 +19,7 @@ class ExtSentry extends Module
     {
         $this->name = 'extsentry';
         $this->tab = 'administration';
-        $this->version = '0.2.0';
+        $this->version = '0.3.0';
         $this->author = 'eXtalion.com';
         $this->need_instance = 0;
         $this->bootstrap = true;
