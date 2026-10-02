@@ -1,4 +1,5 @@
-.env
+.env*
+!.env.dist
 composer.override.yml
 composer.override.yaml
 

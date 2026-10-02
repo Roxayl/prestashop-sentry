@@ -1,9 +1,16 @@
+-include .env
+-include .env.local
+
 PS						?= 1.7.8
+PS_VERSION_TAG			:= $(PS)
 
-export PS_VERSION_TAG	:= $(PS)
+-include .env.$(PS_VERSION_TAG)
+-include .env.$(PS_VERSION_TAG).local
 
-export HOST_UID 		?= $(shell id -u)
-export HOST_GID			?= $(shell id -g)
+HOST_UID 				?= $(shell id -u)
+HOST_GID				?= $(shell id -g)
+
+export
 
 ARGS					?=
 
