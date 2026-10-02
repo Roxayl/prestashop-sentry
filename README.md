@@ -21,6 +21,45 @@ make release
 
 `make release` installs the production dependencies, copies the module into a clean `extsentry/` directory, adds the `index.php` files PrestaShop expects, and produces `extsentry.zip`.
 
+## Development
+
+The development environment requires Docker with Compose v2 and GNU Make. It starts PrestaShop, MySQL and Adminer, mounts the repository as the `extsentry` module and installs its Composer dependencies automatically.
+
+Copy the default environment configuration, start the containers and install the module:
+
+```bash
+cp .env.dist .env
+make up
+make console ARGS="prestashop:module install extsentry"
+```
+
+PrestaShop is available at [http://localhost](http://localhost), its back office at [http://localhost/admin-dev](http://localhost/admin-dev), and Adminer at [http://localhost:8080](http://localhost:8080). The default back-office credentials are `admin@prestashop.com` / `prestashop`. To connect through Adminer, use `db` as the server and `prestashop` as the database, username and password.
+
+PrestaShop 1.7.8 is used by default. Pass another official image tag through `PS` to work with a different version:
+
+```bash
+make PS=8.1.7 up
+make PS=8.1.7 console ARGS="prestashop:module install extsentry"
+```
+
+Each version has an independent Compose project, database volume and installation under `.prestashop/<version>`. Settings can be defined globally in `.env` and `.env.local`, or per version in `.env.<version>` and `.env.<version>.local`; later files override earlier ones. When running versions at the same time, assign different `PS_HTTP_PORT` and `ADMINER_PORT` values in their version-specific environment files.
+
+The available development targets are:
+
+| Target | Description |
+|---|---|
+| `make help` | Show the available Make targets. |
+| `make build` | Build or rebuild the PrestaShop image. |
+| `make up` | Build when necessary and start the environment in the background. |
+| `make down` | Stop and remove the containers, preserving the database and installation. |
+| `make down-hard` | Remove the containers, database volume and local PrestaShop installation. |
+| `make logs` | Follow the container logs. |
+| `make ps` | Show the container status. |
+| `make shell` | Open a shell as `www-data` in the module directory. |
+| `make console ARGS="<command>"` | Run a Symfony console command in the PrestaShop container. |
+
+All targets accept `PS=<version>`. Extra Docker Compose arguments can be supplied with `ARGS`, except for `make console`, where `ARGS` contains the Symfony command and its arguments.
+
 ## Tests
 
 The tests run without PrestaShop, on PHP 7.4 or later with the `intl` extension:
