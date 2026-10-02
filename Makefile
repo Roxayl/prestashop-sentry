@@ -123,10 +123,13 @@ release-build: composer-prod
 	rsync -a \
 		--exclude=*.swp \
 		--exclude=.arcconfig \
+		--exclude=.docker \
+		--exclude=.env* \
 		--exclude=.git \
 		--exclude=.gitignore \
 		--exclude=.php-cs-fixer.* \
 		--exclude=.phpcs* \
+		--exclude=.prestashop \
 		--exclude=composer.* \
 		--exclude=config.xml \
 		--exclude=phpcs.xml* \
