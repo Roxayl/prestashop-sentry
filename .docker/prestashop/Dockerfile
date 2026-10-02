@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM prestashop/prestashop:1.7.8
+ARG PS_VERSION_TAG=1.7.8
+
+FROM prestashop/prestashop:${PS_VERSION_TAG}
 
 ARG HOST_UID=1000
 ARG HOST_GID=1000

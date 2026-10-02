@@ -4,6 +4,7 @@ services:
     build:
       context: .docker/prestashop
       args:
+        PS_VERSION_TAG: ${PS_VERSION_TAG:-1.7.8}
         HOST_UID: ${HOST_UID:-1000}
         HOST_GID: ${HOST_GID:-1000}
     environment:
@@ -25,6 +26,7 @@ services:
     ports:
       - "${PS_HTTP_PORT:-80}:80"
     volumes:
+      - ./.prestashop/${PS_VERSION_TAG:-1.7.8}:/var/www/html
       - ./:/var/www/html/modules/extsentry
 
   db:
