@@ -43,5 +43,12 @@ services:
       timeout: 5s
       retries: 10
 
+  adminer:
+    image: adminer
+    ports:
+      - ${ADMINER_PORT:-8080}:8080
+    depends_on:
+      - db
+
 volumes:
   db_database:
