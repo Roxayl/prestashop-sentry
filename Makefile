@@ -69,6 +69,12 @@ shell: ## Open a shell in the PrestaShop container
 		--workdir=/var/www/html/modules/extsentry \
 		prestashop bash
 
+console: ## Run the Symfony console in the PrestaShop container
+	@$(COMPOSE) exec \
+		--user=www-data \
+		prestashop bin/console \
+		$(ARGS)
+
 # -----------------------------------------------------------------------------
 
 phpcs:
