@@ -6,7 +6,7 @@ PrestaShop module that reports PHP errors and exceptions to [Sentry](https://sen
 
 - PrestaShop 1.7.8 or later
 - PHP 7.4 or later
-- Composer, `rsync` and `zip` on the machine that builds the archive
+- Docker Compose, Make, `rsync` and `zip` on the machine that builds the archive from source
 - Write access for the web server user to `config/`, where the module edits `defines_custom.inc.php` and writes its settings, and to `override/`
 
 ## Build the archive
@@ -23,7 +23,7 @@ make release
 
 ## Development
 
-The development environment requires Docker with Compose v2 and GNU Make. It starts PrestaShop, MySQL and Adminer, mounts the repository as the `extsentry` module and installs its Composer dependencies automatically.
+The development environment requires Docker Compose and Make. It starts PrestaShop, MySQL and Adminer, mounts the repository as the `extsentry` module and installs its Composer dependencies automatically.
 
 Copy the default environment configuration, start the containers and install the module:
 
@@ -57,19 +57,34 @@ The available development targets are:
 | `make ps` | Show the container status. |
 | `make shell` | Open a shell as `www-data` in the module directory. |
 | `make console ARGS="<command>"` | Run a Symfony console command in the PrestaShop container. |
+| `make phpcs` | Run PHP_CodeSniffer. |
+| `make phpcs-fix` | Run PHP Code Beautifier and Fixer. |
+| `make php-cs-fixer` | Run PHP CS Fixer. |
+| `make test` | Install the test dependencies and run PHPUnit. |
+| `make composer ARGS="<command>"` | Run a Composer command. |
+| `make composer-dev` | Install the module development dependencies. |
+| `make composer-prod` | Install the module production dependencies. |
+| `make autoindex` | Add the `index.php` files expected by PrestaShop. |
 
-All targets accept `PS=<version>`. Extra Docker Compose arguments can be supplied with `ARGS`, except for `make console`, where `ARGS` contains the Symfony command and its arguments.
+All targets accept `PS=<version>`. For the container lifecycle targets (`build`, `up`, `down`, `down-hard`, `logs` and `ps`), `ARGS` contains extra Docker Compose arguments. For `console`, QA, test and Composer targets, it contains arguments for the command being run. For example:
+
+```bash
+make logs ARGS="prestashop"
+make test ARGS="--filter ConfigurationTest"
+make composer ARGS="update sentry/sentry --with-dependencies"
+```
 
 ## Tests
 
-The tests run without PrestaShop, on PHP 7.4 or later with the `intl` extension:
+The unit tests do not boot a PrestaShop installation. Make installs their dependencies and runs PHPUnit inside a temporary container, so PHP and Composer are not required on the host:
 
 ```bash
-composer install --no-dev
 make test
+make test ARGS="--filter ConfigurationTest"
+make PS=8.1.7 test
 ```
 
-`make test` installs the test dependencies in `tests/vendor/` and runs PHPUnit. `tests/composer.json` is a separate Composer project: besides PHPUnit, it provides the packages that PrestaShop supplies to the module at runtime, such as the PSR interfaces, Guzzle promises and Symfony 4.4 components. The module's `composer.json` replaces them, so they cannot be installed as its development dependencies.
+`make test` installs the test dependencies in `tests/vendor/` and runs PHPUnit using the selected PrestaShop image. `tests/composer.json` is a separate Composer project: besides PHPUnit, it provides the packages that PrestaShop supplies to the module at runtime, such as the PSR interfaces, Guzzle promises and Symfony 4.4 components. The module's `composer.json` replaces them, so they cannot be installed as its development dependencies.
 
 These Symfony 4.4 versions are affected by security advisories, and recent Composer versions refuse to install them. `tests/composer.json` accepts them because they only serve the tests, and `make release` leaves `tests/` out of the archive.
 
