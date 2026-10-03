@@ -16,6 +16,7 @@ ARGS					?=
 
 COMPOSE_PROJECT_NAME	:= prestashop-senty-$(subst .,-,$(PS_VERSION_TAG))
 COMPOSE 				:= docker compose --project-name $(COMPOSE_PROJECT_NAME)
+COMPOSE_PS				:= $(COMPOSE) run --rm --user=www-data --workdir=/var/www/html/modules/extsentry prestashop
 
 module_name=extsentry
 module_dir=$(CURDIR)/../$(module_name)
@@ -28,7 +29,7 @@ version=$(shell grep '\->version =' $(module_name).php | grep -oe "[0-9]\+\.[0-9
 	build up down down-hard logs ps shell console \
 	phpcs phpcs-fix phpmd php-cs-fixer test-deps test composer-dev composer-prod autoindex clean build archive release release-git
 
-## —— 🌟 Makefile 🌟 ———————————————————————————————————————————————————————————
+## —— 🌟 Makefile ——————————————————————————————————————————————————————————————
 
 help: ## Show this help
 	@grep -hE '(^[a-zA-Z0-9\./_-]+:.*?##.*$$)|(^##)' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}{printf "\033[32m%-30s\033[0m %s\n", $$1, $$2}' | sed -e 's/\[32m##/[33m/'
@@ -52,7 +53,7 @@ down: ## Stop and remove the PrestaShop container
 		--remove-orphans \
 		$(ARGS)
 
-down-hard: ## Stop and delete containers, volumes and the installation of PrestaShop
+down-hard: ## Stop and remove containers, volumes and the PrestaShop installation
 	@$(COMPOSE) down \
 		--remove-orphans \
 		--volumes \
@@ -61,12 +62,12 @@ down-hard: ## Stop and delete containers, volumes and the installation of Presta
 		rm -rf "./.prestashop/$(PS_VERSION_TAG)"; \
 	fi
 
-logs: ## Follow the container logs
+logs: ## Follow container logs
 	@$(COMPOSE) logs \
 		--follow \
 		$(ARGS)
 
-ps: ## Show the container status
+ps: ## Show container status
 	@$(COMPOSE) ps \
 		$(ARGS)
 
@@ -82,42 +83,75 @@ console: ## Run the Symfony console in the PrestaShop container
 		prestashop bin/console \
 		$(ARGS)
 
-# -----------------------------------------------------------------------------
+## —— 🧪 QA ————————————————————————————————————————————————————————————————————
 
-phpcs:
-	vendor/bin/phpcs
+phpcs: ## Run PHP_CodeSniffer
+	@$(COMPOSE_PS) \
+		vendor/bin/phpcs \
+		$(ARGS)
 
-phpcs-fix:
-	vendor/bin/phpcbf
+phpcs-fix: ## Run PHP Code Beautifier and Fixer
+	@$(COMPOSE_PS) \
+		vendor/bin/phpcbf \
+		$(ARGS)
 
-phpmd:
-	#phpmd config,controllers,sql,src,upgrade,views,$(module_name).php text phpmd.xml.dist
+phpmd: ## Run PHPMD
 	phpmd config,sql,src,upgrade,views,$(module_name).php text phpmd.xml.dist
 
-php-cs-fixer:
-	php vendor/bin/php-cs-fixer fix
+php-cs-fixer: ## Run PHP CS Fixer
+	@$(COMPOSE_PS) \
+		vendor/bin/php-cs-fixer fix \
+		$(ARGS)
 
-test-deps:
-	composer install --working-dir=tests --prefer-dist --no-progress --no-interaction
+test-deps: ## Install test dependencies
+	@$(COMPOSE_PS) \
+		composer install \
+		--working-dir=tests/ \
+		--prefer-dist \
+		--no-progress \
+		--no-interaction
 
-test: test-deps
-	php tests/vendor/bin/phpunit
+test: test-deps ## Run tests
+	@$(COMPOSE_PS) \
+		tests/vendor/bin/phpunit \
+		$(ARGS)
 
-composer-dev:
-	composer install --prefer-dist --no-progress --no-interaction
-	composer dump-autoload
+## —— 🛠  Module ————————————————————————————————————————————————————————————————
 
-composer-prod:
-	composer install --prefer-dist --no-progress --no-dev --no-scripts
-	composer dump-autoload --classmap-authoritative --no-dev
+composer: ## Run Composer in the module directory
+	@$(COMPOSE_PS) \
+		composer \
+		$(ARGS)
 
-autoindex: composer-dev
-	vendor/bin/autoindex prestashop:add:index $(build_dir)
+composer-dev: ## Install module development dependencies
+	@$(COMPOSE_PS) \
+		composer install \
+		--prefer-dist \
+		--no-progress \
+		--no-interaction
 
-clean:
+composer-prod: ## Install module production dependencies
+	@$(COMPOSE_PS) \
+		composer install \
+		--prefer-dist \
+		--no-progress \
+		--no-interaction \
+		--no-dev \
+		--no-scripts \
+		--optimize-autoloader
+
+autoindex: composer-dev ## Run Auto Index
+	@$(COMPOSE_PS) \
+		vendor/bin/autoindex \
+		--exclude=.docker,.prestashop,vendor,tests \
+		$(ARGS)
+
+## —— 📦 Release ———————————————————————————————————————————————————————————————
+
+clean: ## Remove release build directory
 	rm -rf $(build_dir)
 
-release-build: composer-prod
+release-build: composer-prod ## Prepare release files
 	$(MAKE) clean
 	mkdir -p $(build_dir)
 	rsync -a \
@@ -144,13 +178,13 @@ release-build: composer-prod
 		--exclude=.phpunit.result.cache \
 		$(module_dir)/ $(build_dir)
 
-archive:
+archive: ## Generate release archive
 	rm -rf $(module_name).zip
 	zip $(module_name).zip $(build_dir) -r
 
-release: release-build autoindex archive clean
+release: release-build autoindex archive clean ## Create release package
 
-release-git:
+release-git: ## Create Git release
 	@echo "Version: ${version}"
 	git add $(module_name).php
 	git commit -m "release: $(version)"
