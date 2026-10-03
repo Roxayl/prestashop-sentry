@@ -16,7 +16,7 @@ ARGS					?=
 
 COMPOSE_PROJECT_NAME	:= prestashop-senty-$(subst .,-,$(PS_VERSION_TAG))
 COMPOSE 				:= docker compose --project-name $(COMPOSE_PROJECT_NAME)
-COMPOSE_PS				:= $(COMPOSE) run --rm --user=www-data --workdir=/var/www/html/modules/extsentry prestashop
+COMPOSE_MODULE			:= $(COMPOSE) run --rm --user=www-data --workdir=/var/www/html/modules/extsentry prestashop
 
 module_name=extsentry
 module_dir=$(CURDIR)/../$(module_name)
@@ -86,12 +86,12 @@ console: ## Run the Symfony console in the PrestaShop container
 ## —— 🧪 QA ————————————————————————————————————————————————————————————————————
 
 phpcs: ## Run PHP_CodeSniffer
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		vendor/bin/phpcs \
 		$(ARGS)
 
 phpcs-fix: ## Run PHP Code Beautifier and Fixer
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		vendor/bin/phpcbf \
 		$(ARGS)
 
@@ -99,12 +99,12 @@ phpmd: ## Run PHPMD
 	phpmd config,sql,src,upgrade,views,$(module_name).php text phpmd.xml.dist
 
 php-cs-fixer: ## Run PHP CS Fixer
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		vendor/bin/php-cs-fixer fix \
 		$(ARGS)
 
 test-deps: ## Install test dependencies
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		composer install \
 		--working-dir=tests/ \
 		--prefer-dist \
@@ -112,26 +112,26 @@ test-deps: ## Install test dependencies
 		--no-interaction
 
 test: test-deps ## Run tests
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		tests/vendor/bin/phpunit \
 		$(ARGS)
 
 ## —— 🛠  Module ————————————————————————————————————————————————————————————————
 
 composer: ## Run Composer in the module directory
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		composer \
 		$(ARGS)
 
 composer-dev: ## Install module development dependencies
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		composer install \
 		--prefer-dist \
 		--no-progress \
 		--no-interaction
 
 composer-prod: ## Install module production dependencies
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		composer install \
 		--prefer-dist \
 		--no-progress \
@@ -141,7 +141,7 @@ composer-prod: ## Install module production dependencies
 		--optimize-autoloader
 
 autoindex: composer-dev ## Run Auto Index
-	@$(COMPOSE_PS) \
+	@$(COMPOSE_MODULE) \
 		vendor/bin/autoindex \
 		--exclude=.docker,.prestashop,vendor,tests \
 		$(ARGS)
