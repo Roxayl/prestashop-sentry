@@ -1,0 +1,56 @@
+services:
+
+  prestashop:
+    build:
+      context: .docker/prestashop
+      args:
+        PS_VERSION_TAG: ${PS_VERSION_TAG:-1.7.8}
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+    environment:
+      DB_SERVER: db
+      DB_NAME: ${DB_NAME:-prestashop}
+      DB_USER: ${DB_USER:-prestashop}
+      DB_PASSWD: ${DB_PASSWORD:-prestashop}
+      PS_DEV_MODE: ${PS_DEV_MODE:-1}
+      PS_INSTALL_AUTO: ${PS_INSTALL_AUTO:-1}
+      PS_DOMAIN: ${PS_DOMAIN:-localhost}
+      PS_FOLDER_ADMIN: ${PS_FOLDER_ADMIN:-admin-dev}
+      ADMIN_MAIL: ${PS_ADMIN_MAIL:-admin@prestashop.com}
+      ADMIN_PASSWD: ${PS_ADMIN_PASSWD:-prestashop}
+    depends_on:
+      db:
+        condition: service_healthy
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - "${PS_HTTP_PORT:-80}:80"
+    volumes:
+      - ./.prestashop/${PS_VERSION_TAG:-1.7.8}:/var/www/html
+      - ./:/var/www/html/modules/extsentry
+
+  db:
+    image: mysql:5.7
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-prestashop}
+      MYSQL_USER: ${DB_USER:-prestashop}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-prestashop}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_database:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer
+    ports:
+      - ${ADMINER_PORT:-8080}:8080
+    depends_on:
+      - db
+
+volumes:
+  db_database:

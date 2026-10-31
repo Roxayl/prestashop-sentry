@@ -6,7 +6,7 @@ PrestaShop module that reports PHP errors and exceptions to [Sentry](https://sen
 
 - PrestaShop 1.7.8 or later
 - PHP 7.4 or later
-- Composer, `rsync` and `zip` on the machine that builds the archive
+- Docker Compose, Make, `rsync` and `zip` on the machine that builds the archive from source
 - Write access for the web server user to `config/`, where the module edits `defines_custom.inc.php` and writes its settings, and to `override/`
 
 ## Build the archive
@@ -21,16 +21,70 @@ make release
 
 `make release` installs the production dependencies, copies the module into a clean `extsentry/` directory, adds the `index.php` files PrestaShop expects, and produces `extsentry.zip`.
 
-## Tests
+## Development
 
-The tests run without PrestaShop, on PHP 7.4 or later with the `intl` extension:
+The development environment requires Docker Compose and Make. It starts PrestaShop, MySQL and Adminer, mounts the repository as the `extsentry` module and installs its Composer dependencies automatically.
+
+Copy the default environment configuration, start the containers and install the module:
 
 ```bash
-composer install --no-dev
-make test
+cp .env.dist .env
+make up
+make console ARGS="prestashop:module install extsentry"
 ```
 
-`make test` installs the test dependencies in `tests/vendor/` and runs PHPUnit. `tests/composer.json` is a separate Composer project: besides PHPUnit, it provides the packages that PrestaShop supplies to the module at runtime, such as the PSR interfaces, Guzzle promises and Symfony 4.4 components. The module's `composer.json` replaces them, so they cannot be installed as its development dependencies.
+PrestaShop is available at [http://localhost](http://localhost), its back office at [http://localhost/admin-dev](http://localhost/admin-dev), and Adminer at [http://localhost:8080](http://localhost:8080). The default back-office credentials are `admin@prestashop.com` / `prestashop`. To connect through Adminer, use `db` as the server and `prestashop` as the database, username and password.
+
+PrestaShop 1.7.8 is used by default. Pass another official image tag through `PS` to work with a different version:
+
+```bash
+make PS=8.1.7 up
+make PS=8.1.7 console ARGS="prestashop:module install extsentry"
+```
+
+Each version has an independent Compose project, database volume and installation under `.prestashop/<version>`. Settings can be defined globally in `.env` and `.env.local`, or per version in `.env.<version>` and `.env.<version>.local`; later files override earlier ones. When running versions at the same time, assign different `PS_HTTP_PORT` and `ADMINER_PORT` values in their version-specific environment files.
+
+The available development targets are:
+
+| Target | Description |
+|---|---|
+| `make help` | Show the available Make targets. |
+| `make build` | Build or rebuild the PrestaShop image. |
+| `make up` | Build when necessary and start the environment in the background. |
+| `make down` | Stop and remove the containers, preserving the database and installation. |
+| `make down-hard` | Remove the containers, database volume and local PrestaShop installation. |
+| `make logs` | Follow the container logs. |
+| `make ps` | Show the container status. |
+| `make shell` | Open a shell as `www-data` in the module directory. |
+| `make console ARGS="<command>"` | Run a Symfony console command in the PrestaShop container. |
+| `make phpcs` | Run PHP_CodeSniffer. |
+| `make phpcs-fix` | Run PHP Code Beautifier and Fixer. |
+| `make php-cs-fixer` | Run PHP CS Fixer. |
+| `make test` | Install the test dependencies and run PHPUnit. |
+| `make composer ARGS="<command>"` | Run a Composer command. |
+| `make composer-dev` | Install the module development dependencies. |
+| `make composer-prod` | Install the module production dependencies. |
+| `make autoindex` | Add the `index.php` files expected by PrestaShop. |
+
+All targets accept `PS=<version>`. For the container lifecycle targets (`build`, `up`, `down`, `down-hard`, `logs` and `ps`), `ARGS` contains extra Docker Compose arguments. For `console`, QA, test and Composer targets, it contains arguments for the command being run. For example:
+
+```bash
+make logs ARGS="prestashop"
+make test ARGS="--filter ConfigurationTest"
+make composer ARGS="update sentry/sentry --with-dependencies"
+```
+
+## Tests
+
+The unit tests do not boot a PrestaShop installation. Make installs their dependencies and runs PHPUnit inside a temporary container, so PHP and Composer are not required on the host:
+
+```bash
+make test
+make test ARGS="--filter ConfigurationTest"
+make PS=8.1.7 test
+```
+
+`make test` installs the test dependencies in `tests/vendor/` and runs PHPUnit using the selected PrestaShop image. `tests/composer.json` is a separate Composer project: besides PHPUnit, it provides the packages that PrestaShop supplies to the module at runtime, such as the PSR interfaces, Guzzle promises and Symfony 4.4 components. The module's `composer.json` replaces them, so they cannot be installed as its development dependencies.
 
 These Symfony 4.4 versions are affected by security advisories, and recent Composer versions refuse to install them. `tests/composer.json` accepts them because they only serve the tests, and `make release` leaves `tests/` out of the archive.
 
